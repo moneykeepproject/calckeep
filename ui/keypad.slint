@@ -1,0 +1,201 @@
+// Bottom-sheet calculator keypad, modeled on the MoneyKeep entry pad.
+// Works with touch, mouse, and a physical keyboard (digits, ".", Backspace, Enter, Esc).
+import { Theme } from "theme.slint";
+
+component PadKey inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> primary;
+    in property <bool> small;
+    in property <color> fg: root.primary ? Theme.on-accent : Theme.text;
+    in property <length> font: root.small ? 14px : root.primary ? 18px : 24px;
+    callback clicked;
+    min-height: root.small ? 40px : 58px;
+    border-radius: 14px;
+    background: root.primary
+        ? (ta.pressed ? Theme.accent-strong : Theme.accent)
+        : (ta.pressed ? Theme.pressed : Theme.raised);
+    animate background { duration: 80ms; }
+    Text {
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: root.small ? Theme.accent-strong : root.fg;
+        font-size: root.font;
+        font-weight: root.small ? 700 : 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    Image {
+        source: root.icon;
+        colorize: Theme.danger;
+        width: 26px;
+        height: 26px;
+    }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component KeypadSheet inherits Rectangle {
+    in property <bool> open;
+    in property <string> label;
+    in property <string> display;
+    in property <string> hint;
+    in property <[string]> quick;
+    callback key(string);
+    callback quick-add(int);
+    callback done();
+    callback cancel();
+
+    background: root.open ? Theme.scrim : transparent;
+    animate background { duration: 160ms; }
+
+    changed open => {
+        if self.open {
+            fs.focus();
+        }
+    }
+
+    if root.open: TouchArea {
+        clicked => { root.cancel(); }
+    }
+
+    sheet := Rectangle {
+        width: Math.min(root.width, 520px);
+        height: content.preferred-height;
+        x: (root.width - self.width) / 2;
+        y: root.open ? root.height - self.height : root.height + 20px;
+        animate y { duration: 220ms; easing: ease-out; }
+        background: Theme.surface;
+        border-top-left-radius: 26px;
+        border-top-right-radius: 26px;
+        drop-shadow-blur: 24px;
+        drop-shadow-color: Theme.shadow;
+
+        // swallow taps on the sheet so they don't close it
+        TouchArea { }
+
+        fs := FocusScope {
+            key-pressed(event) => {
+                if event.text == Key.Escape {
+                    root.cancel();
+                    return accept;
+                }
+                if event.text == Key.Return {
+                    root.done();
+                    return accept;
+                }
+                if event.text == Key.Backspace || event.text == Key.Delete {
+                    root.key("back");
+                    return accept;
+                }
+                root.key(event.text);
+                accept
+            }
+        }
+
+        content := VerticalLayout {
+            padding: 18px;
+            padding-bottom: 26px;
+            spacing: 12px;
+
+            Rectangle {
+                height: 5px;
+                Rectangle {
+                    width: 44px;
+                    height: 5px;
+                    border-radius: 3px;
+                    background: Theme.border;
+                }
+            }
+            HorizontalLayout {
+                spacing: 12px;
+                Text {
+                    text: root.label;
+                    color: Theme.muted;
+                    font-size: 14px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+            }
+            Rectangle {
+                height: 64px;
+                border-radius: 16px;
+                background: Theme.surface-alt;
+                border-width: 1.5px;
+                border-color: Theme.accent;
+                HorizontalLayout {
+                    padding-left: 18px;
+                    padding-right: 18px;
+                    Text {
+                        text: root.display;
+                        color: Theme.accent-strong;
+                        font-size: 34px;
+                        font-weight: 800;
+                        horizontal-alignment: right;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                }
+            }
+            if root.hint != "": Text {
+                text: root.hint;
+                color: Theme.muted;
+                font-size: 12.5px;
+                horizontal-alignment: right;
+            }
+            if root.quick.length > 0: HorizontalLayout {
+                spacing: 8px;
+                for q[i] in root.quick: PadKey {
+                    small: true;
+                    text: q;
+                    clicked => { root.quick-add(i); }
+                }
+            }
+            GridLayout {
+                spacing: 10px;
+                Row {
+                    PadKey { text: "1"; clicked => { root.key("1"); } }
+                    PadKey { text: "2"; clicked => { root.key("2"); } }
+                    PadKey { text: "3"; clicked => { root.key("3"); } }
+                }
+                Row {
+                    PadKey { text: "4"; clicked => { root.key("4"); } }
+                    PadKey { text: "5"; clicked => { root.key("5"); } }
+                    PadKey { text: "6"; clicked => { root.key("6"); } }
+                }
+                Row {
+                    PadKey { text: "7"; clicked => { root.key("7"); } }
+                    PadKey { text: "8"; clicked => { root.key("8"); } }
+                    PadKey { text: "9"; clicked => { root.key("9"); } }
+                }
+                Row {
+                    PadKey { text: "."; clicked => { root.key("."); } }
+                    PadKey { text: "0"; clicked => { root.key("0"); } }
+                    PadKey { icon: @image-url("icons/backspace.svg"); clicked => { root.key("back"); } }
+                }
+            }
+            HorizontalLayout {
+                spacing: 10px;
+                PadKey {
+                    text: "Clear";
+                    fg: Theme.text;
+                    font: 17px;
+                    min-width: 100px;
+                    min-height: 52px;
+                    clicked => { root.key("clear"); }
+                }
+                PadKey {
+                    text: "Done";
+                    primary: true;
+                    min-height: 52px;
+                    horizontal-stretch: 2;
+                    clicked => { root.done(); }
+                }
+            }
+        }
+    }
+}

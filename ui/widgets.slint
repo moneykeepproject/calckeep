@@ -1,0 +1,488 @@
+// Reusable, touch-friendly building blocks.
+import { Theme } from "theme.slint";
+import { FieldData, ResultRow, TableRow } from "types.slint";
+
+export component Card inherits Rectangle {
+    background: Theme.surface;
+    border-radius: Theme.radius;
+    border-width: 1px;
+    border-color: Theme.border;
+    drop-shadow-blur: 12px;
+    drop-shadow-offset-y: 2px;
+    drop-shadow-color: Theme.shadow;
+}
+
+export component IconButton inherits Rectangle {
+    in property <image> icon;
+    in property <length> size: 44px;
+    in property <color> tint: Theme.text;
+    callback clicked;
+    width: size;
+    height: size;
+    border-radius: size / 2;
+    background: ta.pressed ? Theme.pressed : ta.has-hover ? Theme.raised : transparent;
+    Image {
+        source: root.icon;
+        colorize: root.tint;
+        width: 22px;
+        height: 22px;
+    }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+export component TextButton inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    callback clicked;
+    height: 36px;
+    border-radius: 18px;
+    background: ta.pressed ? Theme.pressed : ta.has-hover ? Theme.raised : transparent;
+    HorizontalLayout {
+        padding-left: 10px;
+        padding-right: 12px;
+        spacing: 6px;
+        Image {
+            source: root.icon;
+            colorize: Theme.accent;
+            width: 16px;
+            height: 16px;
+            y: (parent.height - self.height) / 2;
+        }
+        Text {
+            text: root.text;
+            color: Theme.accent;
+            font-size: 14px;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+component FieldLabel inherits Text {
+    color: Theme.text;
+    font-size: 15px;
+    font-weight: 600;
+    overflow: elide;
+}
+
+component HelpText inherits Text {
+    color: Theme.muted;
+    font-size: 12.5px;
+    wrap: word-wrap;
+}
+
+// A number field: tapping it opens the pop-up calculator keypad.
+export component KeypadField inherits VerticalLayout {
+    in property <FieldData> field;
+    callback open();
+    spacing: 6px;
+    FieldLabel { text: root.field.label; }
+    box := Rectangle {
+        height: 54px;
+        border-radius: Theme.radius-sm;
+        background: ta.pressed ? Theme.raised : Theme.surface-alt;
+        border-width: 1.5px;
+        border-color: ta.has-hover ? Theme.accent : Theme.border;
+        HorizontalLayout {
+            padding-left: 16px;
+            padding-right: 14px;
+            spacing: 8px;
+            Text {
+                text: root.field.display;
+                color: Theme.text;
+                font-size: 21px;
+                font-weight: 700;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                overflow: elide;
+            }
+            Image {
+                source: @image-url("icons/calc.svg");
+                colorize: Theme.accent;
+                width: 20px;
+                height: 20px;
+                y: (parent.height - self.height) / 2;
+            }
+        }
+        ta := TouchArea {
+            clicked => { root.open(); }
+        }
+    }
+    if root.field.help != "": HelpText { text: root.field.help; }
+}
+
+// A bounded field: large-thumb slider. Tap the value pill to type an exact value.
+export component SliderField inherits VerticalLayout {
+    in property <FieldData> field;
+    callback changed(float);
+    callback edit-exact();
+    spacing: 4px;
+
+    HorizontalLayout {
+        spacing: 8px;
+        FieldLabel {
+            text: root.field.label;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+        }
+        pill := Rectangle {
+            border-radius: 16px;
+            height: 34px;
+            min-width: 72px;
+            background: pta.pressed ? Theme.pressed : Theme.accent-soft;
+            HorizontalLayout {
+                padding-left: 14px;
+                padding-right: 14px;
+                Text {
+                    text: root.field.display;
+                    color: Theme.accent-strong;
+                    font-size: 16px;
+                    font-weight: 700;
+                    vertical-alignment: center;
+                    horizontal-alignment: center;
+                }
+            }
+            pta := TouchArea {
+                clicked => { root.edit-exact(); }
+            }
+        }
+    }
+
+    track := Rectangle {
+        height: 44px;
+        property <length> thumb: 28px;
+        property <float> frac: root.field.max > root.field.min
+            ? Math.max(0, Math.min(1, (root.field.value - root.field.min) / (root.field.max - root.field.min))) : 0;
+        property <length> cx: thumb / 2 + frac * (self.width - thumb);
+
+        Rectangle {
+            x: track.thumb / 2;
+            y: (parent.height - 6px) / 2;
+            width: parent.width - track.thumb;
+            height: 6px;
+            border-radius: 3px;
+            background: Theme.raised;
+        }
+        Rectangle {
+            x: track.thumb / 2;
+            y: (parent.height - 6px) / 2;
+            width: track.cx - track.thumb / 2;
+            height: 6px;
+            border-radius: 3px;
+            background: Theme.accent;
+        }
+        Rectangle {
+            x: track.cx - self.width / 2;
+            y: (parent.height - self.height) / 2;
+            width: ta.pressed ? track.thumb + 4px : track.thumb;
+            height: self.width;
+            border-radius: self.width / 2;
+            background: Theme.accent;
+            border-width: 4px;
+            border-color: Theme.surface;
+            drop-shadow-blur: 6px;
+            drop-shadow-color: Theme.shadow;
+            animate width { duration: 90ms; }
+        }
+        ta := TouchArea {
+            function update() {
+                root.changed(root.field.min
+                    + Math.max(0, Math.min(1, (self.mouse-x - track.thumb / 2) / (self.width - track.thumb)))
+                    * (root.field.max - root.field.min));
+            }
+            pointer-event(ev) => {
+                if ev.kind == PointerEventKind.down {
+                    self.update();
+                }
+            }
+            moved => {
+                if self.pressed {
+                    self.update();
+                }
+            }
+        }
+    }
+
+    HorizontalLayout {
+        Text {
+            text: root.field.min-label;
+            color: Theme.muted;
+            font-size: 12px;
+        }
+        Text {
+            text: root.field.max-label;
+            color: Theme.muted;
+            font-size: 12px;
+            horizontal-alignment: right;
+        }
+    }
+    if root.field.help != "": HelpText { text: root.field.help; }
+}
+
+// A small set of options: wrapping segmented chips (44px tall touch targets).
+export component ChoiceField inherits VerticalLayout {
+    in property <FieldData> field;
+    callback selected(int);
+    spacing: 8px;
+    FieldLabel { text: root.field.label; }
+    chips := Rectangle {
+        property <length> gap: 8px;
+        property <int> n: root.field.options.length;
+        property <int> cols: Math.max(1, Math.min(self.n, Math.floor((self.width + self.gap) / (66px + self.gap))));
+        property <int> rows: Math.ceil(self.n / self.cols);
+        property <length> cw: (self.width - (self.cols - 1) * self.gap) / self.cols;
+        height: self.rows * 44px + (self.rows - 1) * self.gap;
+        for opt[j] in root.field.options: Rectangle {
+            x: Math.mod(j, chips.cols) * (chips.cw + chips.gap);
+            y: Math.floor(j / chips.cols) * (44px + chips.gap);
+            width: chips.cw;
+            height: 44px;
+            border-radius: Theme.radius-sm;
+            background: j == root.field.selected ? Theme.accent : cta.pressed ? Theme.pressed : Theme.surface-alt;
+            border-width: j == root.field.selected ? 0 : 1px;
+            border-color: Theme.border;
+            animate background { duration: 120ms; }
+            Text {
+                width: parent.width - 8px;
+                text: opt;
+                color: j == root.field.selected ? Theme.on-accent : Theme.text;
+                font-size: 14px;
+                font-weight: 600;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+            cta := TouchArea {
+                clicked => { root.selected(j); }
+            }
+        }
+    }
+    if root.field.help != "": HelpText { text: root.field.help; }
+}
+
+// Picks the best input widget for a field.
+export component FieldView inherits VerticalLayout {
+    in property <FieldData> field;
+    in property <int> index;
+    callback slider(int, float);
+    callback choose(int, int);
+    callback keypad(int);
+    if root.field.kind == 0: KeypadField {
+        field: root.field;
+        open => { root.keypad(root.index); }
+    }
+    if root.field.kind == 1: SliderField {
+        field: root.field;
+        changed(v) => { root.slider(root.index, v); }
+        edit-exact => { root.keypad(root.index); }
+    }
+    if root.field.kind == 2: ChoiceField {
+        field: root.field;
+        selected(j) => { root.choose(root.index, j); }
+    }
+}
+
+// Result summary card plus optional schedule table.
+export component ResultsPanel inherits VerticalLayout {
+    in property <[ResultRow]> rows;
+    in property <string> table-title;
+    in property <[string]> table-headers;
+    in property <[TableRow]> table-rows;
+    spacing: 16px;
+    alignment: start;
+
+    Card {
+        VerticalLayout {
+            padding: 18px;
+            spacing: 10px;
+            Text {
+                text: "Results";
+                color: Theme.muted;
+                font-size: 13px;
+                font-weight: 700;
+                letter-spacing: 1px;
+            }
+            for r in root.rows: VerticalLayout {
+                if r.kind == 1: Rectangle {
+                    border-radius: Theme.radius-sm;
+                    background: Theme.accent-soft;
+                    VerticalLayout {
+                        padding: 16px;
+                        spacing: 2px;
+                        Text {
+                            text: r.label;
+                            color: Theme.muted;
+                            font-size: 14px;
+                            font-weight: 600;
+                        }
+                        Text {
+                            text: r.value;
+                            color: Theme.accent-strong;
+                            font-size: 34px;
+                            font-weight: 800;
+                            overflow: elide;
+                        }
+                    }
+                }
+                if r.kind == 0: Rectangle {
+                    HorizontalLayout {
+                        padding-top: 7px;
+                        padding-bottom: 7px;
+                        spacing: 12px;
+                        Text {
+                            text: r.label;
+                            color: Theme.muted;
+                            font-size: 15px;
+                            horizontal-stretch: 1;
+                            wrap: word-wrap;
+                            vertical-alignment: center;
+                        }
+                        Text {
+                            text: r.value;
+                            color: Theme.text;
+                            font-size: 16px;
+                            font-weight: 700;
+                            horizontal-alignment: right;
+                            vertical-alignment: center;
+                        }
+                    }
+                    Rectangle {
+                        y: parent.height - 1px;
+                        height: 1px;
+                        background: Theme.border;
+                    }
+                }
+                if r.kind == 2: Text {
+                    text: r.label;
+                    color: Theme.muted;
+                    font-size: 13px;
+                    wrap: word-wrap;
+                }
+                if r.kind == 3: Rectangle {
+                    border-radius: Theme.radius-sm;
+                    background: Theme.danger-soft;
+                    HorizontalLayout {
+                        padding: 14px;
+                        Text {
+                            text: r.label;
+                            color: Theme.danger;
+                            font-size: 15px;
+                            font-weight: 600;
+                            wrap: word-wrap;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if root.table-rows.length > 0: Card {
+        tbl := VerticalLayout {
+            padding: 18px;
+            spacing: 0px;
+            Text {
+                text: root.table-title;
+                color: Theme.muted;
+                font-size: 13px;
+                font-weight: 700;
+                letter-spacing: 1px;
+            }
+            Rectangle { height: 10px; }
+            HorizontalLayout {
+                padding-left: 8px;
+                padding-right: 8px;
+                padding-bottom: 8px;
+                for h[j] in root.table-headers: Text {
+                    min-width: 0px;
+                    preferred-width: 0px;
+                    horizontal-stretch: j == 0 ? 0.6 : 1;
+                    text: h;
+                    color: Theme.muted;
+                    font-size: 12.5px;
+                    font-weight: 700;
+                    horizontal-alignment: j == 0 ? left : right;
+                    overflow: elide;
+                }
+            }
+            for row[i] in root.table-rows: Rectangle {
+                border-radius: 8px;
+                background: Math.mod(i, 2) == 0 ? Theme.surface-alt : transparent;
+                HorizontalLayout {
+                    padding: 8px;
+                    for c[j] in row.cells: Text {
+                        min-width: 0px;
+                    preferred-width: 0px;
+                    horizontal-stretch: j == 0 ? 0.6 : 1;
+                        text: c;
+                        color: j == 0 ? Theme.muted : Theme.text;
+                        font-size: 13.5px;
+                        font-weight: j == 0 ? 400 : 600;
+                        horizontal-alignment: j == 0 ? left : right;
+                        overflow: elide;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Vertical scroll bar for a Flickable. Shown only when content is taller than
+// the view. Drag the thumb, or click the track to jump; wheel/touch scrolling
+// still work on the page itself.
+export component VScrollBar inherits Rectangle {
+    in property <length> view-h;
+    in property <length> content-h;
+    in-out property <length> pos; // the Flickable's content-y (0 or negative)
+    property <length> range: Math.max(0px, self.content-h - self.view-h);
+    property <bool> needed: self.range > 1px;
+    property <length> track-h: self.height - 8px;
+    property <length> thumb-h: Math.max(44px, self.track-h * self.view-h / Math.max(1px, self.content-h));
+    property <length> travel: Math.max(1px, self.track-h - self.thumb-h);
+    property <float> frac: self.needed ? Math.max(0, Math.min(1, -self.pos / self.range)) : 0;
+    property <length> drag-start-pos;
+    property <bool> active: ta.pressed || ta.has-hover;
+    width: 16px;
+    visible: self.needed;
+
+    // faint track while hovering/dragging (desktop)
+    Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: 4px;
+        width: 10px;
+        height: root.track-h;
+        border-radius: 5px;
+        background: root.active ? Theme.raised.with-alpha(0.7) : transparent;
+        animate background { duration: 120ms; }
+    }
+    thumb := Rectangle {
+        x: (parent.width - self.width) / 2;
+        y: 4px + root.frac * root.travel;
+        width: root.active ? 10px : 6px;
+        height: root.thumb-h;
+        border-radius: self.width / 2;
+        background: ta.pressed ? Theme.accent : Theme.muted.with-alpha(root.active ? 0.8 : 0.45);
+        animate width { duration: 100ms; }
+    }
+    ta := TouchArea {
+        pointer-event(ev) => {
+            if ev.kind == PointerEventKind.down {
+                // clicked on the track (not the thumb): jump so the thumb centers there
+                if self.mouse-y < thumb.y || self.mouse-y > thumb.y + thumb.height {
+                    root.pos = -Math.max(0, Math.min(1, (self.mouse-y - 4px - root.thumb-h / 2) / root.travel)) * root.range;
+                }
+                root.drag-start-pos = root.pos;
+            }
+        }
+        moved => {
+            if self.pressed {
+                root.pos = Math.max(-root.range, Math.min(0px,
+                    root.drag-start-pos - (self.mouse-y - self.pressed-y) / root.travel * root.range));
+            }
+        }
+    }
+}

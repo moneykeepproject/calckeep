@@ -1,0 +1,877 @@
+// CalcKeep main window: category tiles -> calculator list -> calculator page.
+import { Palette, AboutSlint } from "std-widgets.slint";
+import { Theme } from "theme.slint";
+import { TileData, CalcItem, FieldData, ResultRow, TableRow, HistoryItem } from "types.slint";
+import { Card, IconButton, TextButton, FieldView, ResultsPanel, VScrollBar } from "widgets.slint";
+import { KeypadSheet } from "keypad.slint";
+
+export { TileData, CalcItem, FieldData, ResultRow, TableRow, HistoryItem, Theme }
+
+// Same order as Category::icon in the Rust catalog
+global Icons {
+    out property <[image]> category: [
+        @image-url("icons/home.svg"),
+        @image-url("icons/car.svg"),
+        @image-url("icons/key.svg"),
+        @image-url("icons/payoff.svg"),
+        @image-url("icons/loan.svg"),
+        @image-url("icons/retirement.svg"),
+        @image-url("icons/savings.svg"),
+        @image-url("icons/invest.svg"),
+        @image-url("icons/tax.svg"),
+        @image-url("icons/shield.svg"),
+        @image-url("icons/business.svg"),
+        @image-url("icons/building.svg"),
+        @image-url("icons/grad.svg"),
+    ];
+}
+
+component IconBubble inherits Rectangle {
+    in property <int> icon;
+    in property <length> size: 48px;
+    width: self.size;
+    height: self.size;
+    border-radius: self.size * 0.3;
+    background: Theme.cat-colors[root.icon].with-alpha(Theme.dark ? 0.18 : 0.12);
+    Image {
+        source: Icons.category[root.icon];
+        colorize: Theme.cat-colors[root.icon];
+        width: root.size * 0.52;
+        height: root.size * 0.52;
+    }
+}
+
+component Tile inherits Rectangle {
+    in property <TileData> data;
+    callback clicked;
+    border-radius: Theme.radius;
+    background: ta.pressed ? Theme.raised : Theme.surface;
+    border-width: 1px;
+    border-color: ta.has-hover ? Theme.cat-colors[root.data.icon] : Theme.border;
+    drop-shadow-blur: 12px;
+    drop-shadow-offset-y: 2px;
+    drop-shadow-color: Theme.shadow;
+    animate background, border-color { duration: 120ms; }
+    VerticalLayout {
+        padding: 16px;
+        spacing: 4px;
+        alignment: start;
+        IconBubble {
+            icon: root.data.icon;
+        }
+        Rectangle { height: 8px; }
+        Text {
+            text: root.data.name;
+            color: Theme.text;
+            font-size: 17px;
+            font-weight: 700;
+            overflow: elide;
+        }
+        Text {
+            text: root.data.subtitle;
+            color: Theme.muted;
+            font-size: 13px;
+            wrap: word-wrap;
+            overflow: elide;
+        }
+    }
+    ta := TouchArea {
+        clicked => { root.clicked(); }
+    }
+}
+
+component HomePage inherits Rectangle {
+    in property <[TileData]> tiles;
+    in property <length> side;
+    callback open(int);
+    flick := Flickable {
+        content-width: self.width;
+        content-height: col.preferred-height;
+        col := VerticalLayout {
+            width: flick.width;
+            padding-left: root.side;
+            padding-right: root.side;
+            padding-top: 8px;
+            padding-bottom: 32px;
+            spacing: 6px;
+            Text {
+                text: "Financial calculators";
+                color: Theme.text;
+                font-size: 28px;
+                font-weight: 800;
+            }
+            Text {
+                text: "Pick a category to get started.";
+                color: Theme.muted;
+                font-size: 15px;
+            }
+            Rectangle { height: 14px; }
+            grid := Rectangle {
+                property <length> gap: 14px;
+                property <int> cols: Math.max(2, Math.min(4, Math.floor((self.width + self.gap) / (176px + self.gap))));
+                property <length> tw: (self.width - (self.cols - 1) * self.gap) / self.cols;
+                property <length> th: self.cols == 2 ? 156px : 140px;
+                height: Math.ceil(root.tiles.length / self.cols) * (self.th + self.gap) - self.gap;
+                for t[i] in root.tiles: Tile {
+                    x: Math.mod(i, grid.cols) * (grid.tw + grid.gap);
+                    y: Math.floor(i / grid.cols) * (grid.th + grid.gap);
+                    width: grid.tw;
+                    height: grid.th;
+                    data: t;
+                    clicked => { root.open(i); }
+                }
+            }
+        }
+    }
+
+    VScrollBar {
+        x: root.width - self.width - 1px;
+        y: 0px;
+        height: root.height;
+        view-h: flick.height;
+        content-h: flick.content-height;
+        pos <=> flick.content-y;
+    }
+}
+
+component CategoryPage inherits Rectangle {
+    in property <[CalcItem]> items;
+    in property <int> icon;
+    in property <length> side;
+    callback open(int);
+    flick := Flickable {
+        content-width: self.width;
+        content-height: col.preferred-height;
+        col := VerticalLayout {
+            width: flick.width;
+            padding-left: Math.max(root.side, (flick.width - 760px) / 2);
+            padding-right: Math.max(root.side, (flick.width - 760px) / 2);
+            padding-top: 8px;
+            padding-bottom: 32px;
+            spacing: 12px;
+            for c[i] in root.items: Rectangle {
+                border-radius: Theme.radius;
+                background: ta.pressed ? Theme.raised : Theme.surface;
+                border-width: 1px;
+                border-color: ta.has-hover ? Theme.accent : Theme.border;
+                drop-shadow-blur: 12px;
+                drop-shadow-offset-y: 2px;
+                drop-shadow-color: Theme.shadow;
+                HorizontalLayout {
+                    padding: 16px;
+                    spacing: 14px;
+                    IconBubble {
+                        icon: root.icon;
+                        size: 44px;
+                        y: (parent.height - self.height) / 2;
+                    }
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 3px;
+                        alignment: center;
+                        Text {
+                            text: c.name;
+                            color: Theme.text;
+                            font-size: 17px;
+                            font-weight: 700;
+                            wrap: word-wrap;
+                        }
+                        Text {
+                            text: c.blurb;
+                            color: Theme.muted;
+                            font-size: 13.5px;
+                            wrap: word-wrap;
+                        }
+                    }
+                    Image {
+                        source: @image-url("icons/chevron.svg");
+                        colorize: Theme.muted;
+                        width: 20px;
+                        height: 20px;
+                        y: (parent.height - self.height) / 2;
+                    }
+                }
+                ta := TouchArea {
+                    clicked => { root.open(i); }
+                }
+            }
+        }
+    }
+
+    VScrollBar {
+        x: root.width - self.width - 1px;
+        y: 0px;
+        height: root.height;
+        view-h: flick.height;
+        content-h: flick.content-height;
+        pos <=> flick.content-y;
+    }
+}
+
+component FieldsCard inherits Card {
+    in property <[FieldData]> fields;
+    callback slider(int, float);
+    callback choose(int, int);
+    callback keypad(int);
+    callback reset();
+    VerticalLayout {
+        padding: 18px;
+        spacing: 20px;
+        alignment: start;
+        HorizontalLayout {
+            Text {
+                text: "Inputs";
+                color: Theme.muted;
+                font-size: 13px;
+                font-weight: 700;
+                letter-spacing: 1px;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+            }
+            TextButton {
+                text: "Reset";
+                icon: @image-url("icons/reset.svg");
+                clicked => { root.reset(); }
+            }
+        }
+        for f[i] in root.fields: FieldView {
+            field: f;
+            index: i;
+            slider(idx, v) => { root.slider(idx, v); }
+            choose(idx, j) => { root.choose(idx, j); }
+            keypad(idx) => { root.keypad(idx); }
+        }
+    }
+}
+
+component CalcPage inherits Rectangle {
+    in property <string> blurb;
+    in property <[FieldData]> fields;
+    in property <[ResultRow]> results;
+    in property <string> table-title;
+    in property <[string]> table-headers;
+    in property <[TableRow]> table-rows;
+    in property <string> headline-label;
+    in property <string> headline-value;
+    in property <bool> wide;
+    in property <length> side;
+    callback slider(int, float);
+    callback choose(int, int);
+    callback keypad(int);
+    callback reset();
+
+    property <bool> show-bar: !root.wide && root.headline-value != "";
+
+    flick := Flickable {
+        content-width: self.width;
+        content-height: col.preferred-height;
+        col := VerticalLayout {
+            width: flick.width;
+            padding-left: Math.max(root.side, (flick.width - 1180px) / 2);
+            padding-right: Math.max(root.side, (flick.width - 1180px) / 2);
+            padding-top: 4px;
+            padding-bottom: root.show-bar ? 104px : 32px;
+            spacing: 16px;
+            blurb-text := Text {
+                text: root.blurb;
+                color: Theme.muted;
+                font-size: 15px;
+                wrap: word-wrap;
+            }
+            if root.wide: wide-row := HorizontalLayout {
+                spacing: 20px;
+                alignment: stretch;
+                VerticalLayout {
+                    width: (wide-row.width - 20px) / 2;
+                    alignment: start;
+                    FieldsCard {
+                        fields: root.fields;
+                        slider(i, v) => { root.slider(i, v); }
+                        choose(i, j) => { root.choose(i, j); }
+                        keypad(i) => { root.keypad(i); }
+                        reset => { root.reset(); }
+                    }
+                }
+                VerticalLayout {
+                    width: (wide-row.width - 20px) / 2;
+                    alignment: start;
+                    ResultsPanel {
+                        rows: root.results;
+                        table-title: root.table-title;
+                        table-headers: root.table-headers;
+                        table-rows: root.table-rows;
+                    }
+                }
+            }
+            if !root.wide: VerticalLayout {
+                spacing: 16px;
+                FieldsCard {
+                    init => { root.fields-h = self.height; }
+                    changed height => { root.fields-h = self.height; }
+                    fields: root.fields;
+                    slider(i, v) => { root.slider(i, v); }
+                    choose(i, j) => { root.choose(i, j); }
+                    keypad(i) => { root.keypad(i); }
+                    reset => { root.reset(); }
+                }
+                ResultsPanel {
+                    rows: root.results;
+                    table-title: root.table-title;
+                    table-headers: root.table-headers;
+                    table-rows: root.table-rows;
+                }
+            }
+        }
+    }
+
+    VScrollBar {
+        x: root.width - self.width - 1px;
+        y: 0px;
+        height: root.height;
+        view-h: flick.height;
+        content-h: flick.content-height;
+        pos <=> flick.content-y;
+    }
+
+    // Sticky headline result on phones; tap to jump to the full results.
+    if root.show-bar: Rectangle {
+        x: root.side;
+        width: root.width - 2 * root.side;
+        height: 72px;
+        y: root.height - self.height - 14px;
+        border-radius: Theme.radius;
+        background: bta.pressed ? Theme.accent-strong : Theme.accent;
+        drop-shadow-blur: 18px;
+        drop-shadow-offset-y: 4px;
+        drop-shadow-color: Theme.shadow;
+        HorizontalLayout {
+            padding-left: 18px;
+            padding-right: 18px;
+            spacing: 10px;
+            Text {
+                text: root.headline-label;
+                color: Theme.on-accent;
+                font-size: 14px;
+                font-weight: 600;
+                vertical-alignment: center;
+                horizontal-stretch: 1;
+                wrap: word-wrap;
+            }
+            Text {
+                text: root.headline-value;
+                color: Theme.on-accent;
+                font-size: 24px;
+                font-weight: 800;
+                vertical-alignment: center;
+                horizontal-alignment: right;
+            }
+        }
+        bta := TouchArea {
+            clicked => {
+                // scroll so the results card is near the top
+                flick.content-y = Math.max(flick.height - flick.content-height, -(4px + blurb-text.height + 16px + root.fields-h + 8px));
+            }
+        }
+    }
+    property <length> fields-h: 0px;
+}
+
+component HistoryPage inherits Rectangle {
+    in property <[HistoryItem]> items;
+    in property <length> side;
+    callback open(int);
+    callback delete(int);
+    callback clear-all();
+    property <bool> confirm-clear: false;
+    flick := Flickable {
+        content-width: self.width;
+        content-height: col.preferred-height;
+        col := VerticalLayout {
+            width: flick.width;
+            padding-left: Math.max(root.side, (flick.width - 760px) / 2);
+            padding-right: Math.max(root.side, (flick.width - 760px) / 2);
+            padding-top: 4px;
+            padding-bottom: 32px;
+            spacing: 12px;
+            HorizontalLayout {
+                Text {
+                    text: root.items.length == 0 ? "" : root.items.length + " of 30 saved · oldest drop off automatically";
+                    color: Theme.muted;
+                    font-size: 13.5px;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                    wrap: word-wrap;
+                }
+                if root.items.length > 0: Rectangle {
+                    height: 36px;
+                    width: clear-text.preferred-width + 24px;
+                    border-radius: 18px;
+                    background: root.confirm-clear ? Theme.danger : cta.pressed ? Theme.pressed : cta.has-hover ? Theme.raised : transparent;
+                    clear-text := Text {
+                        text: root.confirm-clear ? "Tap again to clear" : "Clear all";
+                        color: root.confirm-clear ? #ffffff : Theme.danger;
+                        font-size: 14px;
+                        font-weight: 600;
+                    }
+                    cta := TouchArea {
+                        clicked => {
+                            if root.confirm-clear {
+                                root.confirm-clear = false;
+                                root.clear-all();
+                            } else {
+                                root.confirm-clear = true;
+                            }
+                        }
+                    }
+                }
+            }
+            if root.items.length == 0: Card {
+                VerticalLayout {
+                    padding: 28px;
+                    spacing: 10px;
+                    alignment: center;
+                    Image {
+                        source: @image-url("icons/history.svg");
+                        colorize: Theme.muted;
+                        width: 40px;
+                        height: 40px;
+                        x: (parent.width - self.width) / 2;
+                    }
+                    Text {
+                        text: "No history yet";
+                        color: Theme.text;
+                        font-size: 18px;
+                        font-weight: 700;
+                        horizontal-alignment: center;
+                    }
+                    Text {
+                        text: "When you change inputs on any calculator, the calculation is saved here automatically. The last 30 are kept on this device.";
+                        color: Theme.muted;
+                        font-size: 14px;
+                        wrap: word-wrap;
+                        horizontal-alignment: center;
+                    }
+                }
+            }
+            for h[i] in root.items: Rectangle {
+                border-radius: Theme.radius;
+                background: ta.pressed ? Theme.raised : Theme.surface;
+                border-width: 1px;
+                border-color: ta.has-hover ? Theme.accent : Theme.border;
+                drop-shadow-blur: 12px;
+                drop-shadow-offset-y: 2px;
+                drop-shadow-color: Theme.shadow;
+                ta := TouchArea {
+                    clicked => {
+                        root.confirm-clear = false;
+                        root.open(i);
+                    }
+                }
+                HorizontalLayout {
+                    padding: 14px;
+                    padding-right: 6px;
+                    spacing: 12px;
+                    IconBubble {
+                        icon: h.icon;
+                        size: 42px;
+                        y: (parent.height - self.height) / 2;
+                    }
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 2px;
+                        alignment: center;
+                        Text {
+                            text: h.calc;
+                            color: Theme.text;
+                            font-size: 15.5px;
+                            font-weight: 700;
+                            overflow: elide;
+                        }
+                        Text {
+                            text: h.headline-value == "" ? h.headline-label : h.headline-label + ": " + h.headline-value;
+                            color: h.headline-value == "" ? Theme.danger : Theme.accent-strong;
+                            font-size: 15px;
+                            font-weight: 700;
+                            overflow: elide;
+                        }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            Text {
+                                text: h.summary;
+                                color: Theme.muted;
+                                font-size: 13px;
+                                horizontal-stretch: 1;
+                                overflow: elide;
+                            }
+                            Text {
+                                text: h.when;
+                                color: Theme.muted;
+                                font-size: 12px;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                    IconButton {
+                        icon: @image-url("icons/close.svg");
+                        tint: Theme.muted;
+                        size: 40px;
+                        y: (parent.height - self.height) / 2;
+                        clicked => { root.delete(i); }
+                    }
+                }
+            }
+        }
+    }
+
+    VScrollBar {
+        x: root.width - self.width - 1px;
+        y: 0px;
+        height: root.height;
+        view-h: flick.height;
+        content-h: flick.content-height;
+        pos <=> flick.content-y;
+    }
+}
+
+component AboutPage inherits Rectangle {
+    in property <string> version;
+    in property <length> side;
+    // THIRD-PARTY-LICENSES.txt is beside the program (desktop installs; security-review-1 M8).
+    in property <bool> licences-available;
+    callback open-licences();
+    flick := Flickable {
+        content-width: self.width;
+        content-height: col.preferred-height;
+        col := VerticalLayout {
+            width: flick.width;
+            padding-left: Math.max(root.side, (flick.width - 640px) / 2);
+            padding-right: Math.max(root.side, (flick.width - 640px) / 2);
+            padding-top: 4px;
+            padding-bottom: 32px;
+            spacing: 16px;
+            Card {
+                VerticalLayout {
+                    padding: 22px;
+                    spacing: 8px;
+                    HorizontalLayout {
+                        spacing: 14px;
+                        Image {
+                            source: @image-url("icons/app-icon.svg");
+                            width: 56px;
+                            height: 56px;
+                        }
+                        VerticalLayout {
+                            alignment: center;
+                            Text {
+                                text: "CalcKeep";
+                                color: Theme.text;
+                                font-size: 24px;
+                                font-weight: 800;
+                            }
+                            Text {
+                                text: "Version " + root.version;
+                                color: Theme.muted;
+                                font-size: 14px;
+                            }
+                        }
+                    }
+                    Rectangle { height: 6px; }
+                    Text {
+                        text: "Financial calculators for mortgages, auto loans and leases, debt payoff, loans, retirement, savings and CDs, investments, taxes, insurance and business.";
+                        color: Theme.text;
+                        font-size: 15px;
+                        wrap: word-wrap;
+                    }
+                    Text {
+                        text: "Your history (the last 30 calculations), last-used inputs and theme are stored only on this device.";
+                        color: Theme.muted;
+                        font-size: 14px;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+            Card {
+                VerticalLayout {
+                    padding: 22px;
+                    spacing: 12px;
+                    Text {
+                        text: "BUILT WITH";
+                        color: Theme.muted;
+                        font-size: 13px;
+                        font-weight: 700;
+                        letter-spacing: 1px;
+                    }
+                    Rectangle {
+                        height: 120px;
+                        AboutSlint {
+                            width: parent.width;
+                            height: parent.height;
+                        }
+                    }
+                    Text {
+                        text: "Rust + Slint · https://slint.dev";
+                        color: Theme.muted;
+                        font-size: 13px;
+                        horizontal-alignment: center;
+                    }
+                    Text {
+                        text: "Slint is used under the Slint Royalty-free License 2.0. CalcKeep is under the MIT or Apache-2.0 licence; the crates it is built from keep their own licences.";
+                        color: Theme.muted;
+                        font-size: 13px;
+                        wrap: word-wrap;
+                    }
+                    if root.licences-available: HorizontalLayout {
+                        alignment: center;
+                        TextButton {
+                            text: "Third-party licences";
+                            clicked => { root.open-licences(); }
+                        }
+                    }
+                }
+            }
+            Card {
+                VerticalLayout {
+                    padding: 22px;
+                    spacing: 8px;
+                    Text {
+                        text: "DISCLAIMER";
+                        color: Theme.muted;
+                        font-size: 13px;
+                        font-weight: 700;
+                        letter-spacing: 1px;
+                    }
+                    Text {
+                        text: "Results are estimates for planning only and are not financial, tax, legal or insurance advice. Tax figures use 2026 federal brackets (IRS Rev. Proc. 2025-32) and simplified assumptions. Check important decisions with a qualified professional.";
+                        color: Theme.text;
+                        font-size: 14px;
+                        wrap: word-wrap;
+                    }
+                }
+            }
+        }
+    }
+
+    VScrollBar {
+        x: root.width - self.width - 1px;
+        y: 0px;
+        height: root.height;
+        view-h: flick.height;
+        content-h: flick.content-height;
+        pos <=> flick.content-y;
+    }
+}
+
+export component AppWindow inherits Window {
+    title: "CalcKeep";
+    icon: @image-url("icons/app-icon.svg");
+    preferred-width: 1000px;
+    preferred-height: 760px;
+    min-width: 320px;
+    min-height: 480px;
+    background: Theme.bg;
+    default-font-size: 15px;
+
+    // navigation: 0 = home tiles, 1 = calculator list, 2 = calculator
+    in-out property <int> page: 0;
+    in property <[TileData]> tiles;
+    in property <string> cat-name;
+    in property <int> cat-icon;
+    in property <[CalcItem]> calc-items;
+    in property <string> calc-name;
+    in property <string> calc-blurb;
+    in property <[FieldData]> fields;
+    in property <[ResultRow]> results;
+    in property <string> table-title;
+    in property <[string]> table-headers;
+    in property <[TableRow]> table-rows;
+    in property <string> headline-label;
+    in property <string> headline-value;
+
+    in property <bool> keypad-open;
+    in property <string> keypad-label;
+    in property <string> keypad-display;
+    in property <string> keypad-hint;
+    in property <[string]> keypad-quick;
+    in property <[HistoryItem]> history;
+    in property <string> app-version;
+
+    callback open-category(int);
+    callback open-calc(int);
+    callback go-back();
+    callback field-slider(int, float);
+    callback field-choice(int, int);
+    callback field-keypad(int);
+    callback reset-calc();
+    callback keypad-key(string);
+    callback keypad-quick-add(int);
+    callback keypad-done();
+    callback keypad-cancel();
+    callback theme-changed(bool);
+    callback open-history();
+    callback open-about();
+    in property <bool> licences-available;
+    callback open-licences();
+    callback open-history-item(int);
+    callback delete-history-item(int);
+    callback clear-history();
+
+    property <bool> wide: self.width >= 860px;
+    // keep the std-widgets palette (used by the Slint badge) in sync with our theme
+    property <bool> dark-mirror: Theme.dark;
+    changed dark-mirror => {
+        Palette.color-scheme = self.dark-mirror ? ColorScheme.dark : ColorScheme.light;
+    }
+    property <length> side: self.width < 520px ? 14px : 24px;
+
+    init => {
+        Theme.dark = Palette.color-scheme != ColorScheme.light;
+        Palette.color-scheme = Theme.dark ? ColorScheme.dark : ColorScheme.light;
+        main-fs.focus();
+    }
+
+    changed keypad-open => {
+        if !self.keypad-open {
+            main-fs.focus();
+        }
+    }
+
+    main-fs := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Escape || event.text == Key.Back {
+                if root.page > 0 {
+                    root.go-back();
+                    return accept;
+                }
+            }
+            reject
+        }
+    }
+
+    // Header
+        Rectangle {
+            x: 0;
+            y: 0;
+            width: root.width;
+            height: 64px;
+            background: Theme.bg;
+            HorizontalLayout {
+                padding-left: root.page > 0 ? 6px : 14px;
+                padding-right: 8px;
+                spacing: 4px;
+                if root.page > 0: IconButton {
+                    icon: @image-url("icons/back.svg");
+                    y: (parent.height - self.height) / 2;
+                    clicked => { root.go-back(); }
+                }
+                if root.page == 0: Rectangle {
+                    width: 36px;
+                    Image {
+                        source: @image-url("icons/app-icon.svg");
+                        width: 36px;
+                        height: 36px;
+                    }
+                }
+                Rectangle { width: root.page == 0 ? 8px : 0px; }
+                Text {
+                    text: root.page == 0 ? "CalcKeep" : root.page == 1 ? root.cat-name : root.page == 2 ? root.calc-name : root.page == 3 ? "History" : "About";
+                    color: Theme.text;
+                    font-size: root.page == 0 ? 22px : 19px;
+                    font-weight: 800;
+                    vertical-alignment: center;
+                    horizontal-stretch: 1;
+                    overflow: elide;
+                }
+                if root.page == 0: IconButton {
+                    icon: @image-url("icons/history.svg");
+                    y: (parent.height - self.height) / 2;
+                    clicked => { root.open-history(); }
+                }
+                if root.page == 0: IconButton {
+                    icon: @image-url("icons/info.svg");
+                    y: (parent.height - self.height) / 2;
+                    clicked => { root.open-about(); }
+                }
+                IconButton {
+                    icon: Theme.dark ? @image-url("icons/sun.svg") : @image-url("icons/moon.svg");
+                    y: (parent.height - self.height) / 2;
+                    clicked => {
+                        Theme.dark = !Theme.dark;
+                        root.theme-changed(Theme.dark);
+                    }
+                }
+            }
+        }
+
+        if root.page == 0: HomePage {
+            y: 64px;
+            width: root.width;
+            height: root.height - 64px;
+            tiles: root.tiles;
+            side: root.side;
+            open(i) => { root.open-category(i); }
+        }
+        if root.page == 1: CategoryPage {
+            y: 64px;
+            width: root.width;
+            height: root.height - 64px;
+            items: root.calc-items;
+            icon: root.cat-icon;
+            side: root.side;
+            open(i) => { root.open-calc(i); }
+        }
+        if root.page == 2: CalcPage {
+            y: 64px;
+            width: root.width;
+            height: root.height - 64px;
+            blurb: root.calc-blurb;
+            fields: root.fields;
+            results: root.results;
+            table-title: root.table-title;
+            table-headers: root.table-headers;
+            table-rows: root.table-rows;
+            headline-label: root.headline-label;
+            headline-value: root.headline-value;
+            wide: root.wide;
+            side: root.side;
+            slider(i, v) => { root.field-slider(i, v); }
+            choose(i, j) => { root.field-choice(i, j); }
+            keypad(i) => { root.field-keypad(i); }
+            reset => { root.reset-calc(); }
+        }
+
+    if root.page == 3: HistoryPage {
+            y: 64px;
+            width: root.width;
+            height: root.height - 64px;
+            items: root.history;
+            side: root.side;
+            open(i) => { root.open-history-item(i); }
+            delete(i) => { root.delete-history-item(i); }
+            clear-all => { root.clear-history(); }
+        }
+    if root.page == 4: AboutPage {
+            y: 64px;
+            width: root.width;
+            height: root.height - 64px;
+            version: root.app-version;
+            side: root.side;
+            licences-available: root.licences-available;
+            open-licences => { root.open-licences(); }
+        }
+
+    KeypadSheet {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        open: root.keypad-open;
+        label: root.keypad-label;
+        display: root.keypad-display;
+        hint: root.keypad-hint;
+        quick: root.keypad-quick;
+        key(k) => { root.keypad-key(k); }
+        quick-add(i) => { root.keypad-quick-add(i); }
+        done => { root.keypad-done(); }
+        cancel => { root.keypad-cancel(); }
+    }
+}

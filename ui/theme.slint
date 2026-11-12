@@ -1,0 +1,41 @@
+// Colors and sizes for the dark and light themes.
+export global Theme {
+    in-out property <bool> dark: true;
+
+    out property <color> bg: dark ? #0b1120 : #eef2f7;
+    out property <color> surface: dark ? #162032 : #ffffff;
+    out property <color> surface-alt: dark ? #0e1626 : #f6f8fb;
+    out property <color> raised: dark ? #223049 : #e6ebf2;
+    out property <color> pressed: dark ? #2d3d5a : #d5dde8;
+    out property <color> border: dark ? #26344c : #dbe2ec;
+    out property <color> text: dark ? #f1f5f9 : #0f172a;
+    out property <color> muted: dark ? #94a3b8 : #5b6b80;
+    out property <color> accent: dark ? #10b981 : #059669;
+    out property <color> accent-strong: dark ? #34d399 : #047857;
+    out property <color> accent-soft: dark ? #10b98124 : #0596691a;
+    out property <color> on-accent: dark ? #03140d : #ffffff;
+    out property <color> danger: dark ? #fb7185 : #e11d48;
+    out property <color> danger-soft: dark ? #fb71851f : #e11d4812;
+    out property <color> scrim: dark ? #020617b3 : #0f172a73;
+    out property <color> shadow: dark ? #00000066 : #0f172a1f;
+
+    out property <length> radius: 18px;
+    out property <length> radius-sm: 12px;
+
+    // One accent per category tile (same order as the catalog)
+    out property <[color]> cat-colors: [
+        #10b981, // Mortgage
+        #3b82f6, // Auto loan
+        #8b5cf6, // Auto lease
+        #f43f5e, // Pay off
+        #f59e0b, // Loan
+        #14b8a6, // Retirement
+        #22c55e, // Savings & CD
+        #6366f1, // Investments
+        #ef4444, // Tax
+        #0ea5e9, // Insurance
+        #a855f7, // Business
+        #f97316, // Real estate
+        #ec4899, // Education
+    ];
+}

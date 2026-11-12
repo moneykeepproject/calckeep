@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Hardened-runtime entitlements for CalcKeep.app (MoneyKeep's docs/specs/macos-release.md
+     P2). Deliberately empty: CalcKeep is Rust, loads no unsigned code, needs no JIT and is not
+     sandboxed (its history lives in the user's own Application Support folder). Add an
+     exception here only with a reason in a comment. -->
+<plist version="1.0">
+<dict>
+</dict>
+</plist>

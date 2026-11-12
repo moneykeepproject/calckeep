@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0b1120">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>CalcKeep</title>
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #0b1120; overflow: hidden; }
+    /* Slint renders the whole app into this canvas and follows its size */
+    #canvas { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
+    #loading { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+               color: #94a3b8; font: 600 15px system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="loading">Loading CalcKeep…</div>
+  <canvas id="canvas"></canvas>
+  <script type="module">
+    import init from "./pkg/calckeep.js";
+    init().finally(() => document.getElementById("loading").remove());
+  </script>
+</body>
+</html>

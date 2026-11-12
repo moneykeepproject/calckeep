@@ -1,0 +1,21 @@
+CalcKeep
+Copyright (c) 2026 MoneyKeep Project contributors
+
+CalcKeep is licensed under either of
+
+  * Apache License, Version 2.0 (LICENSE-APACHE or https://www.apache.org/licenses/LICENSE-2.0)
+  * MIT license (LICENSE-MIT or https://opensource.org/licenses/MIT)
+
+at your option.
+
+The user interface is built with Slint (https://slint.dev), used under the Slint
+Royalty-free Desktop, Mobile, and Web Applications License 2.0 (its text is in
+THIRD-PARTY-LICENSES.txt, with the slint crates); the About screen shows
+Slint's attribution badge (AboutSlint), as that licence asks. CalcKeep does not
+redistribute Slint on its own. CalcKeep's own code stays MIT OR Apache-2.0.
+
+Every third-party crate compiled into CalcKeep is listed with its version, its
+licence and the licence texts it ships in THIRD-PARTY-LICENSES.txt, installed
+beside the program and opened from About -> Third-party licences.
+
+Calculators give estimates for planning only, not financial, tax or legal advice.

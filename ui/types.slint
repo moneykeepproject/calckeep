@@ -1,0 +1,48 @@
+// Data passed between Rust and the UI.
+
+export struct TileData {
+    name: string,
+    subtitle: string,
+    icon: int,
+    count: int,
+}
+
+export struct CalcItem {
+    name: string,
+    blurb: string,
+}
+
+// kind: 0 = keypad, 1 = slider, 2 = choice
+export struct FieldData {
+    label: string,
+    help: string,
+    kind: int,
+    value: float,
+    display: string,
+    min: float,
+    max: float,
+    min-label: string,
+    max-label: string,
+    options: [string],
+    selected: int,
+}
+
+// kind: 0 = normal, 1 = primary (headline), 2 = note, 3 = warning
+export struct ResultRow {
+    label: string,
+    value: string,
+    kind: int,
+}
+
+export struct TableRow {
+    cells: [string],
+}
+
+export struct HistoryItem {
+    calc: string,
+    icon: int,
+    headline-label: string,
+    headline-value: string,
+    summary: string,
+    when: string,
+}
