@@ -2,7 +2,7 @@
 
 Financial calculators built with **Rust + Slint**, using one codebase for desktop, web (WASM), Android and iOS.
 
-Version 0.1.0: [release notes](docs/release-notes/0.1.0.md) · [known limits](docs/known-limits.md).
+Version 0.1.1: [release notes](docs/release-notes/0.1.1.md) · [known limits](docs/known-limits.md).
 
 **13 category tiles, 57 calculators**
 
